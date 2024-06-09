@@ -1,5 +1,10 @@
+--- Import swatari configuration
 require("swatari")
 
+--- Set Python3 provider path
+vim.g.python3_host_prog = '/usr/bin/python3'
+
+--- Lazy.nvim setup
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.loop.fs_stat(lazypath) then
   vim.fn.system({
@@ -13,8 +18,10 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
+--- Set leader key
 vim.g.mapleader = " "
 
+--- Plugin setup with lazy.nvim
 require("lazy").setup({
   "folke/which-key.nvim",
   {
@@ -45,4 +52,7 @@ require("lazy").setup({
   'hrsh7th/nvim-cmp',
   'L3MON4D3/LuaSnip'
 })
+
+
+
 
