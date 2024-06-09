@@ -53,25 +53,6 @@ require("lazy").setup({
   'L3MON4D3/LuaSnip'
 })
 
---- Initialize Mason and Mason-LSPConfig
--- require("mason").setup()
--- require("mason-lspconfig").setup {
---    ensure_installed = { "yamllls" }
---}
-
--- Setup lspconfig
---local lspconfig = require('lspconfig')
-
---lspconfig.yamlls.setup {
---    settings = {
---        yaml = {
---            schemas = {
---                kubernetes = "*.yaml"
---            }
---        }
---    }
---}
-
 
 
 
