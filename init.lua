@@ -36,9 +36,8 @@ require("lazy").setup({
     'nvim-telescope/telescope.nvim', tag = '0.1.4',
     dependencies = { 'nvim-lua/plenary.nvim' }
   },
-  {
-    'nvim-treesitter/nvim-treesitter', build = ':TSUpdate'
-  },
+  {'nvim-treesitter/nvim-treesitter', build = ':TSUpdate'},
+  {"preservim/nerdtree"},
   "folke/neodev.nvim",
   "nvim-treesitter/playground",
   "theprimeagen/harpoon",

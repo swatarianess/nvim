@@ -1,5 +1,6 @@
 vim.g.mapleader = " "
-vim.keymap.set("n", "<leader>pv", vim.cmd.Ex)
+
+-- Key mappings to disable Q and set tab and split navigation
 vim.keymap.set("n", "Q", "<nop>")
 vim.keymap.set("n", "<C-End>", "<cmd>:tabclose<CR>")
 vim.keymap.set("n", "<C-Insert>", "<cmd>:tabnew<CR>")
@@ -15,3 +16,8 @@ vim.keymap.set("n", "<leader><leader>", function()
     vim.cmd("so")
     print("ShoutOut!")
 end)
+
+-- Key mappings to switch between tab pages
+vim.keymap.set("n", "<leader>h", "<cmd>tabprevious<CR>")
+vim.keymap.set("n", "<leader>l", "<cmd>tabnext<CR>")
+
