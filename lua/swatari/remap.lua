@@ -12,6 +12,9 @@ vim.keymap.set("n", "<leader>Y", [["+Y"]])
 vim.keymap.set("n", "<leader>x", "<cmd>!chmod +x %<CR>", { silent = true })
 vim.keymap.set("n", "<leader>f", vim.lsp.buf.format)
 
+-- Execute python code
+vim.keymap.set("n", "<leader>p", "<cmd>!python3 %<CR>")
+
 vim.keymap.set("n", "<leader><leader>", function()
     vim.cmd("so")
     print("ShoutOut!")

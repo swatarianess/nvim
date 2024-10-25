@@ -3,6 +3,9 @@
 -- Set the global variable to keep NERDTree open when opening a file
 vim.g.NERDTreeQuitOnOpen = 0
 
+-- Show hidden files
+vim.g.NERDTreeShowHidden = 1
+
 -- Set the global variable to display Git status flags
 vim.g.NERDTreeGitStatusWithFlags = 1
 
