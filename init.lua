@@ -21,6 +21,9 @@ vim.opt.rtp:prepend(lazypath)
 --- Set leader key
 vim.g.mapleader = " "
 
+--- Remove annoying node warning
+vim.g.loaded_node_provider = 0
+
 --- Plugin setup with lazy.nvim
 require("lazy").setup({
   "folke/which-key.nvim",
@@ -49,8 +52,23 @@ require("lazy").setup({
   'neovim/nvim-lspconfig',
   'hrsh7th/cmp-nvim-lsp',
   'hrsh7th/nvim-cmp',
+  {
+      'adelarsq/image_preview.nvim',
+      event = 'VeryLazy',
+      config = function()
+          require("image_preview").setup()
+      end
+  },
   'L3MON4D3/LuaSnip'
 })
+
+local lspconfig = require("lspconfig")
+
+--lspconfig.ast_grep.setup({
+--    cmd = { 'ast-grep', 'lsp'},
+--    root_dir = lspconfig.util.root_pattern('sgconfig.yml'),
+--    single_file_support = true,
+--})
 
 
 -- Enable folding and set fold method to 'indent'
