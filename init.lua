@@ -59,17 +59,24 @@ require("lazy").setup({
           require("image_preview").setup()
       end
   },
-  'L3MON4D3/LuaSnip'
+  'L3MON4D3/LuaSnip',
+  {
+      'kdheepak/lazygit.nvim',
+      lazy = true,
+      cmd = {
+          "LazyGit",
+          "LazyGitConfig",
+          "LazyGitCurrentFile",
+          "LazyGitFilter",
+          "LazyGitFilterCurrentFile",
+      },
+      dependencies = {
+          "nvim-lua/plenary.nvim",
+      },
+  }
 })
 
 local lspconfig = require("lspconfig")
-
---lspconfig.ast_grep.setup({
---    cmd = { 'ast-grep', 'lsp'},
---    root_dir = lspconfig.util.root_pattern('sgconfig.yml'),
---    single_file_support = true,
---})
-
 
 -- Enable folding and set fold method to 'indent'
 vim.opt.foldmethod = 'indent'

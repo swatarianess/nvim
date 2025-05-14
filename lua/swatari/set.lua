@@ -4,6 +4,9 @@ vim.opt.shiftwidth = 4
 vim.opt.expandtab = true
 
 
+-- Font stuff
+-- vim.o.guifont = "FiraCode:h18"
+
 -- Other settings
 vim.opt.number = true
 vim.opt.autoindent = true
@@ -39,11 +42,12 @@ vim.api.nvim_set_hl(0, 'NormalFloat', { bg = 'NONE' })
 vim.opt.pumblend = 0  -- Keep popup menu solid
 vim.opt.winblend = 0  -- Keep active window solid
 
+-- Neovide Opacity settings
+vim.g.neovide_opacity = 0.80
+vim.g.neovide_normal_opacity = 0.95
+
 -- Set winblend for inactive windows
 vim.opt.winblend = 80
-
---vim.opt.scrolloff = 9
---vim.opt.signcolumn = "yes"
 
 vim.opt.updatetime = 50
 --vim.opt.colorcolumn = "80"
