@@ -95,6 +95,13 @@ require("lazy").setup({
           },
       },
       cmd = { "CsvViewEnable", "CsvViewDisable", "CsvViewToggle" },
+  },
+  {
+      "mikavilpas/yazi.nvim",
+      event = "VeryLazy",
+      dependencies = {
+          { "nvim-lua/plenary.nvim", lazy = true },
+      },
   }
 })
 
