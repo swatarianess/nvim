@@ -39,7 +39,13 @@ require("lazy").setup({
     'nvim-telescope/telescope.nvim', tag = '0.1.4',
     dependencies = { 'nvim-lua/plenary.nvim' }
   },
-  {'nvim-treesitter/nvim-treesitter', build = ':TSUpdate'},
+  {
+      'nvim-treesitter/nvim-treesitter',
+      build = ':TSUpdate',
+      dependencies = {
+          "OXY2DEV/markview.nvim"
+      }
+  },
   {"preservim/nerdtree"},
   "folke/neodev.nvim",
   "nvim-treesitter/playground",
@@ -102,7 +108,7 @@ require("lazy").setup({
       dependencies = {
           { "nvim-lua/plenary.nvim", lazy = true },
       },
-  }
+  },
 })
 
 local lspconfig = require("lspconfig")
