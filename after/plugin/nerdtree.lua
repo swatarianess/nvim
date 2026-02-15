@@ -20,7 +20,7 @@ autocmd bufenter * if (winnr('$') == 1 && bufname() == 'NERD_tree_1') | q | endi
 ]]
 
 -- Key mappings for NERDTree
-vim.keymap.set("n", "<leader>pv", "<cmd>NERDTreeToggle<CR>")
+vim.keymap.set("n", "<leader>pv", "<cmd>NERDTreeToggle %<CR>")
 
 -- Key mappings to switch between splits (windows)
 vim.keymap.set("n", "<C-Left>", "<C-w>h")
