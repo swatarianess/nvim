@@ -170,12 +170,22 @@ local function pr_delta(opts)
             if not wins[1] then
                 return
             end
-            vim.api.nvim_win_call(wins[1], function()
-                -- Delta prints the file path as a header; jump to it.
-                -- Escape magic chars so the path matches literally.
+            local win = wins[1]
+            -- Leave terminal-mode so we can move the cursor (otherwise any
+            -- normal-mode command errors with "Can't re-enter normal mode
+            -- from terminal mode").
+            pcall(vim.api.nvim_set_current_win, win)
+            pcall(vim.cmd, "stopinsert")
+            vim.api.nvim_win_call(win, function()
+                -- Delta prints the file path as a header; find it and put that
+                -- line at the top of the window. Escape magic chars so the path
+                -- matches literally.
                 local pat = vim.fn.escape(file, "/\\.*$^~[]")
-                pcall(vim.fn.search, pat, "w")
-                vim.cmd("normal! zt")
+                local lnum = vim.fn.search(pat, "w")
+                if lnum > 0 then
+                    -- Scroll so the match sits at the top, without `normal!`.
+                    vim.fn.winrestview({ topline = lnum, lnum = lnum, col = 0 })
+                end
             end)
         end, 400)
     end
