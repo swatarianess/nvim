@@ -107,10 +107,13 @@ map("n", "<leader>oil", "<cmd>Octo issue list<cr>", { desc = "Octo: issue list" 
 -- Saved PR searches.
 --
 -- `:Octo search <query>` sends a raw GitHub search string to the API, so we can
--- pre-bake useful queries. Edit the `saved_searches` table to add your own;
--- each entry is { key, name, query }. Every entry gets:
---   * a keymap  <leader>os<key>
---   * an entry in the `:PRSaved` picker (vim.ui.select)
+-- pre-bake useful queries. There are two sources, merged together:
+--   1. `default_searches` below (version-controlled defaults in this file), and
+--   2. a user file at stdpath('data')/octo_saved_searches.json that you can add
+--      to *from inside nvim* with :PRSaveSearch (no manual file editing needed).
+--
+-- Each entry gets an entry in the `:PRSaved` picker (<leader>oss). Defaults also
+-- get a stable keymap <leader>os<key>.
 --
 -- GitHub search cheatsheet (all combinable):
 --   is:pr is:open              open PRs
@@ -120,7 +123,7 @@ map("n", "<leader>oil", "<cmd>Octo issue list<cr>", { desc = "Octo: issue list" 
 --   team-review-requested:ORG/TEAM   assigned to your team
 --   -label:"Don't review"      exclude a label (note the leading minus)
 --   draft:false                exclude drafts
-local saved_searches = {
+local default_searches = {
     -- key   name (shown in picker)              GitHub query
     { "r", "Review requested (me), not reviewed", 'is:pr is:open review-requested:@me -reviewed-by:@me -label:"Don\'t review" draft:false' },
     { "n", "Brand new PRs (no reviews yet)",      'is:pr is:open review:none -label:"Don\'t review" draft:false' },
@@ -128,6 +131,52 @@ local saved_searches = {
     { "m", "My open PRs",                          "is:pr is:open author:@me" },
     { "a", "All open PRs (excl. Don't review)",    'is:pr is:open -label:"Don\'t review"' },
 }
+
+local saved_path = vim.fn.stdpath("data") .. "/octo_saved_searches.json"
+
+-- Load user-saved searches from the JSON file. Returns a list of {name, query}.
+local function load_user_searches()
+    local f = io.open(saved_path, "r")
+    if not f then
+        return {}
+    end
+    local content = f:read("*a")
+    f:close()
+    if not content or content == "" then
+        return {}
+    end
+    local ok, data = pcall(vim.json.decode, content)
+    if not ok or type(data) ~= "table" then
+        vim.notify("Octo: could not parse " .. saved_path, vim.log.levels.WARN)
+        return {}
+    end
+    return data
+end
+
+local function save_user_searches(list)
+    local f = io.open(saved_path, "w")
+    if not f then
+        vim.notify("Octo: could not write " .. saved_path, vim.log.levels.ERROR)
+        return false
+    end
+    f:write(vim.json.encode(list))
+    f:close()
+    return true
+end
+
+-- Combined view: defaults (with keys) + user searches (no fixed key).
+local function all_searches()
+    local out = {}
+    for _, s in ipairs(default_searches) do
+        table.insert(out, { key = s[1], name = s[2], query = s[3], builtin = true })
+    end
+    for _, s in ipairs(load_user_searches()) do
+        if s.name and s.query then
+            table.insert(out, { key = nil, name = s.name, query = s.query, builtin = false })
+        end
+    end
+    return out
+end
 
 -- Prepend the current repo so searches are scoped to it. Falls back to a global
 -- search (all your repos) if the repo can't be determined.
@@ -146,32 +195,106 @@ local function run_saved_search(query)
     vim.cmd("Octo search " .. scoped_query(query))
 end
 
-for _, s in ipairs(saved_searches) do
+-- Stable keymaps for the version-controlled defaults.
+for _, s in ipairs(default_searches) do
     local key, name, query = s[1], s[2], s[3]
     map("n", "<leader>os" .. key, function()
         run_saved_search(query)
     end, { desc = "Octo search: " .. name })
 end
 
--- `:PRSaved` / <leader>oss  -> pick a saved search from a menu.
+-- `:PRSaved` / <leader>oss  -> pick any saved search (defaults + user) from a menu.
 vim.api.nvim_create_user_command("PRSaved", function()
-    local items = {}
-    for _, s in ipairs(saved_searches) do
-        table.insert(items, s)
+    local items = all_searches()
+    if #items == 0 then
+        vim.notify("No saved searches", vim.log.levels.INFO)
+        return
     end
     vim.ui.select(items, {
         prompt = "Saved PR searches:",
         format_item = function(item)
-            return string.format("[%s] %s", item[1], item[2])
+            local tag = item.builtin and ("[" .. item.key .. "] ") or "[*] "
+            return tag .. item.name
         end,
     }, function(choice)
         if choice then
-            run_saved_search(choice[3])
+            run_saved_search(choice.query)
         end
     end)
 end, { desc = "Pick a saved PR search" })
 
+-- `:PRSaveSearch` -> add a new saved search from inside nvim (persists to JSON).
+-- Prompts for a name and the GitHub query string.
+vim.api.nvim_create_user_command("PRSaveSearch", function(opts)
+    local function do_save(name, query)
+        if not name or name == "" or not query or query == "" then
+            vim.notify("Save cancelled (name and query required)", vim.log.levels.WARN)
+            return
+        end
+        local list = load_user_searches()
+        -- Replace if a user search with the same name exists, else append.
+        local replaced = false
+        for _, s in ipairs(list) do
+            if s.name == name then
+                s.query = query
+                replaced = true
+                break
+            end
+        end
+        if not replaced then
+            table.insert(list, { name = name, query = query })
+        end
+        if save_user_searches(list) then
+            vim.notify(
+                string.format("Saved search '%s'%s", name, replaced and " (updated)" or ""),
+                vim.log.levels.INFO
+            )
+        end
+    end
+
+    -- Allow ":PRSaveSearch Name | query" one-liner, else prompt interactively.
+    local arg = opts.args or ""
+    local name, query = arg:match("^%s*(.-)%s*|%s*(.+)%s*$")
+    if name and query then
+        do_save(name, query)
+        return
+    end
+
+    vim.ui.input({ prompt = "Saved search name: " }, function(input_name)
+        if not input_name or input_name == "" then
+            return
+        end
+        vim.ui.input({ prompt = "GitHub query: ", default = "is:pr is:open " }, function(input_query)
+            do_save(input_name, input_query)
+        end)
+    end)
+end, { nargs = "?", desc = "Save a new PR search (persists to disk)" })
+
+-- `:PRDeleteSearch` -> remove a user-saved search via a menu.
+vim.api.nvim_create_user_command("PRDeleteSearch", function()
+    local list = load_user_searches()
+    if #list == 0 then
+        vim.notify("No user-saved searches to delete", vim.log.levels.INFO)
+        return
+    end
+    vim.ui.select(list, {
+        prompt = "Delete which saved search?",
+        format_item = function(item)
+            return item.name .. "  (" .. item.query .. ")"
+        end,
+    }, function(choice, idx)
+        if not choice then
+            return
+        end
+        table.remove(list, idx)
+        if save_user_searches(list) then
+            vim.notify("Deleted saved search '" .. choice.name .. "'", vim.log.levels.INFO)
+        end
+    end)
+end, { desc = "Delete a user-saved PR search" })
+
 map("n", "<leader>oss", "<cmd>PRSaved<cr>", { desc = "Octo: saved searches menu" })
+map("n", "<leader>osw", "<cmd>PRSaveSearch<cr>", { desc = "Octo: save a new search" })
 
 
 -- ---------------------------------------------------------------------------
