@@ -67,46 +67,118 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 -- :PRDelta  -  view a PR's diff piped through `delta` (single unified pane).
 --
 -- Octo's own review UI is buffer-based and can't embed delta, so this opens a
--- terminal split running `gh pr diff <n> | delta`. Delta gives a gorgeous,
+-- terminal running `gh pr diff <n> | delta`. Delta gives a gorgeous,
 -- single-column unified diff with syntax highlighting and line numbers.
--- Great as a *reading* companion: keep this open on one side and use the Octo
--- review window on the other to leave comments / mark files viewed.
+--
+-- It pulls context straight from Octo when available:
+--   * the PR number from the current Octo buffer, and
+--   * the file you're currently viewing in a review (so delta scrolls to it).
 --
 -- Usage:
---   :PRDelta          -> diff for the PR of the current branch (or Octo buffer)
---   :PRDelta 123      -> diff for PR #123
-local function pr_delta(opts)
-    local num = opts.args and opts.args ~= "" and opts.args or nil
-
-    -- If no number given, try to read it from the current Octo buffer.
-    if not num then
-        local ok, octo_buffer = pcall(function()
-            return require("octo.utils").get_current_buffer()
-        end)
-        if ok and octo_buffer and octo_buffer.number then
-            num = tostring(octo_buffer.number)
+--   :PRDelta          -> current PR (float). If in a review, jumps to the
+--                        file under your cursor.
+--   :PRDelta 123      -> PR #123 in a float
+--   :PRDelta!         -> full PR in a bottom split instead of a float
+local function octo_context()
+    local num, file
+    local ok_u, octo_buffer = pcall(function()
+        return require("octo.utils").get_current_buffer()
+    end)
+    if ok_u and octo_buffer and octo_buffer.number then
+        num = tostring(octo_buffer.number)
+    end
+    -- If we're in an active review, grab the file currently focused so we can
+    -- scroll delta to it.
+    local ok_r, reviews = pcall(require, "octo.reviews")
+    if ok_r then
+        local review = reviews.get_current_review and reviews.get_current_review()
+        if review and review.layout then
+            local ok_f, f = pcall(function()
+                return review.layout:get_current_file()
+            end)
+            if ok_f and f and f.path then
+                file = f.path
+            end
         end
     end
+    return num, file
+end
 
-    -- `gh pr diff` accepts a number or, with none, uses the current branch's PR.
+local function open_delta_float()
+    local ui = vim.api.nvim_list_uis()[1]
+    local width = math.floor((ui and ui.width or vim.o.columns) * 0.85)
+    local height = math.floor((ui and ui.height or vim.o.lines) * 0.85)
+    local buf = vim.api.nvim_create_buf(false, true)
+    local win = vim.api.nvim_open_win(buf, true, {
+        relative = "editor",
+        width = width,
+        height = height,
+        row = math.floor(((vim.o.lines - height) / 2) - 1),
+        col = math.floor((vim.o.columns - width) / 2),
+        style = "minimal",
+        border = "rounded",
+        title = " PR diff (delta) ",
+        title_pos = "center",
+    })
+    -- q or <Esc> closes the float.
+    vim.keymap.set("t", "<Esc>", [[<C-\><C-n><cmd>close<cr>]], { buffer = buf })
+    vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = buf })
+    return buf, win
+end
+
+local function pr_delta(opts)
+    local num = opts.args and opts.args ~= "" and opts.args or nil
+    local file
+    if not num then
+        num, file = octo_context()
+    end
+
     local gh_cmd = num and ("gh pr diff " .. num) or "gh pr diff"
-    -- Delta is single-column (unified) by default, which is exactly what we
-    -- want. paging=never so it fills the terminal buffer and we scroll with
-    -- normal nvim keys instead of an internal pager.
-    local cmd = string.format(
-        "%s | delta --paging=never --line-numbers",
-        gh_cmd
-    )
+    -- Delta is single-column (unified) by default. paging=never so it fills the
+    -- buffer and we scroll with normal nvim keys.
+    local cmd = string.format("%s | delta --paging=never --line-numbers", gh_cmd)
 
-    vim.cmd("botright vsplit")
-    vim.cmd("enew")
+    if opts.bang then
+        -- Full diff in a bottom split.
+        vim.cmd("botright split")
+        vim.cmd("enew")
+    else
+        -- Floating window overlaid on the review.
+        open_delta_float()
+    end
+
     vim.fn.termopen({ "bash", "-lc", cmd })
+
+    -- If we know the focused review file, search delta's output for its header
+    -- and scroll there once the terminal has rendered.
+    if file then
+        local target = vim.api.nvim_get_current_buf()
+        vim.defer_fn(function()
+            if not vim.api.nvim_buf_is_valid(target) then
+                return
+            end
+            local wins = vim.fn.win_findbuf(target)
+            if not wins[1] then
+                return
+            end
+            vim.api.nvim_win_call(wins[1], function()
+                -- Delta prints the file path as a header; jump to it.
+                -- Escape magic chars so the path matches literally.
+                local pat = vim.fn.escape(file, "/\\.*$^~[]")
+                pcall(vim.fn.search, pat, "w")
+                vim.cmd("normal! zt")
+            end)
+        end, 400)
+    end
+
     vim.cmd("startinsert")
 end
 
 vim.api.nvim_create_user_command("PRDelta", pr_delta, {
     nargs = "?",
-    desc = "View PR diff via delta (single unified pane)",
+    bang = true,
+    desc = "View PR diff via delta (float; ! = split). Uses Octo PR + file context.",
 })
 
-map("n", "<leader>opd", "<cmd>PRDelta<cr>", { desc = "Octo: PR diff via delta" })
+map("n", "<leader>opd", "<cmd>PRDelta<cr>", { desc = "Octo: PR diff via delta (float)" })
+map("n", "<leader>opD", "<cmd>PRDelta!<cr>", { desc = "Octo: PR diff via delta (split)" })
