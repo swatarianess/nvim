@@ -120,6 +120,15 @@ local function open_delta_float()
         title = " PR diff (delta) ",
         title_pos = "center",
     })
+    -- Give this float a SOLID dark background. Your colors.lua makes the global
+    -- NormalFloat transparent, which let the diff behind bleed through and made
+    -- delta unreadable. We define dedicated opaque groups and point the window
+    -- at them via winhighlight so only THIS float is solid.
+    vim.api.nvim_set_hl(0, "DeltaFloatNormal", { bg = "#11121a", fg = "#c0caf5" })
+    vim.api.nvim_set_hl(0, "DeltaFloatBorder", { bg = "#11121a", fg = "#565f89" })
+    vim.wo[win].winhighlight =
+        "Normal:DeltaFloatNormal,NormalFloat:DeltaFloatNormal,FloatBorder:DeltaFloatBorder"
+    vim.wo[win].winblend = 0
     -- q or <Esc> closes the float.
     vim.keymap.set("t", "<Esc>", [[<C-\><C-n><cmd>close<cr>]], { buffer = buf })
     vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = buf })
