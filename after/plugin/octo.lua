@@ -104,6 +104,77 @@ map("n", "<leader>ot", "<cmd>Octo thread resolve<cr>", { desc = "Octo: resolve t
 map("n", "<leader>oil", "<cmd>Octo issue list<cr>", { desc = "Octo: issue list" })
 
 -- ---------------------------------------------------------------------------
+-- Saved PR searches.
+--
+-- `:Octo search <query>` sends a raw GitHub search string to the API, so we can
+-- pre-bake useful queries. Edit the `saved_searches` table to add your own;
+-- each entry is { key, name, query }. Every entry gets:
+--   * a keymap  <leader>os<key>
+--   * an entry in the `:PRSaved` picker (vim.ui.select)
+--
+-- GitHub search cheatsheet (all combinable):
+--   is:pr is:open              open PRs
+--   review-requested:@me       PRs asking for YOUR review
+--   -reviewed-by:@me           PRs you have NOT reviewed yet
+--   review:none                PRs with no reviews at all (brand new)
+--   team-review-requested:ORG/TEAM   assigned to your team
+--   -label:"Don't review"      exclude a label (note the leading minus)
+--   draft:false                exclude drafts
+local saved_searches = {
+    -- key   name (shown in picker)              GitHub query
+    { "r", "Review requested (me), not reviewed", 'is:pr is:open review-requested:@me -reviewed-by:@me -label:"Don\'t review" draft:false' },
+    { "n", "Brand new PRs (no reviews yet)",      'is:pr is:open review:none -label:"Don\'t review" draft:false' },
+    { "t", "Team review requested",               'is:pr is:open review-requested:@me -label:"Don\'t review"' },
+    { "m", "My open PRs",                          "is:pr is:open author:@me" },
+    { "a", "All open PRs (excl. Don't review)",    'is:pr is:open -label:"Don\'t review"' },
+}
+
+-- Prepend the current repo so searches are scoped to it. Falls back to a global
+-- search (all your repos) if the repo can't be determined.
+local function scoped_query(query)
+    local ok, repo = pcall(function()
+        return require("octo.utils").get_remote_name()
+    end)
+    if ok and type(repo) == "string" and repo ~= "" then
+        return string.format("repo:%s %s", repo, query)
+    end
+    return query
+end
+
+local function run_saved_search(query)
+    -- Route through the public :Octo search command for stability.
+    vim.cmd("Octo search " .. scoped_query(query))
+end
+
+for _, s in ipairs(saved_searches) do
+    local key, name, query = s[1], s[2], s[3]
+    map("n", "<leader>os" .. key, function()
+        run_saved_search(query)
+    end, { desc = "Octo search: " .. name })
+end
+
+-- `:PRSaved` / <leader>oss  -> pick a saved search from a menu.
+vim.api.nvim_create_user_command("PRSaved", function()
+    local items = {}
+    for _, s in ipairs(saved_searches) do
+        table.insert(items, s)
+    end
+    vim.ui.select(items, {
+        prompt = "Saved PR searches:",
+        format_item = function(item)
+            return string.format("[%s] %s", item[1], item[2])
+        end,
+    }, function(choice)
+        if choice then
+            run_saved_search(choice[3])
+        end
+    end)
+end, { desc = "Pick a saved PR search" })
+
+map("n", "<leader>oss", "<cmd>PRSaved<cr>", { desc = "Octo: saved searches menu" })
+
+
+-- ---------------------------------------------------------------------------
 -- Transparency for Octo review diffs.
 --
 -- Octo shows PR diffs in real (tiled, non-floating) split windows. The empty
