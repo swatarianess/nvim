@@ -169,17 +169,27 @@ local function octo_context()
             repo = octo_buffer.repo
         end
     end
-    -- If we're in an active review, grab the file currently focused so we can
-    -- scroll delta to it.
+    -- If we're in an active review, use it for context. This is essential:
+    -- while focused in a review DIFF window the current buffer is not an Octo
+    -- buffer, so get_current_buffer() returns nil and we'd otherwise fall back
+    -- to `gh pr diff` on the current branch (the "wrong diff" bug). The review
+    -- object carries the real PR number, repo, and focused file.
     local ok_r, reviews = pcall(require, "octo.reviews")
     if ok_r then
         local review = reviews.get_current_review and reviews.get_current_review()
-        if review and review.layout then
-            local ok_f, f = pcall(function()
-                return review.layout:get_current_file()
-            end)
-            if ok_f and f and f.path then
-                file = f.path
+        if review then
+            local pr = review.pull_request
+            if pr then
+                num = num or (pr.number and tostring(pr.number))
+                repo = repo or pr.repo
+            end
+            if review.layout then
+                local ok_f, f = pcall(function()
+                    return review.layout:get_current_file()
+                end)
+                if ok_f and f and f.path then
+                    file = f.path
+                end
             end
         end
     end
@@ -239,6 +249,20 @@ local function pr_delta(opts)
     -- Delta is single-column (unified) by default. paging=never so it fills the
     -- buffer and we scroll with normal nvim keys.
     local cmd = string.format("%s | delta --paging=never --line-numbers", gh_cmd)
+
+    -- Surface what we resolved, so it's obvious which PR/repo is being shown
+    -- (and easy to spot when context detection fails).
+    if num then
+        vim.notify(
+            string.format("PRDelta: PR #%s%s", num, repo and (" (" .. repo .. ")") or ""),
+            vim.log.levels.INFO
+        )
+    else
+        vim.notify(
+            "PRDelta: no PR number found in Octo context; falling back to current branch's PR",
+            vim.log.levels.WARN
+        )
+    end
 
     if opts.bang then
         -- Full diff in a bottom split.
