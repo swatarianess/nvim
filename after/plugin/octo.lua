@@ -1,6 +1,80 @@
 -- Octo.nvim: review GitHub PRs/issues from inside nvim.
 -- Loads lazily via the `:Octo` command (see init.lua).
 
+-- ---------------------------------------------------------------------------
+-- Upstream bug workaround (octo.nvim): generate_position2line_map crashes with
+-- "attempt to perform arithmetic on local 'left_side_line' (a nil value)" when
+-- a review comment's diffhunk header has no line count, e.g. "@@ -1 +1 @@"
+-- (single-line hunks in small/new files). Octo's regex requires a comma
+-- (`-N,M`), returns nil, and then does nil+1 in the loop.
+--
+-- We replace the function at runtime from our OWN config so the fix survives
+-- `:Lazy update` (which would overwrite a direct edit to the plugin file).
+-- Remove this block once the upstream PR is merged.
+local function patch_octo_position_map()
+    local ok, utils = pcall(require, "octo.utils")
+    if not ok or type(utils) ~= "table" then
+        return
+    end
+    if utils.__position_map_patched then
+        return
+    end
+    utils.__position_map_patched = true
+
+    utils.generate_position2line_map = function(diffhunk)
+        local diffhunk_lines = vim.split(diffhunk, "\n")
+        local diff_directive = diffhunk_lines[1] or ""
+        local left_offset, right_offset =
+            string.match(diff_directive, "@@%s*%-(%d+),%d+%s%+(%d+)")
+        -- Fallback for headers without a left-side line count (e.g. "@@ -1 +1 @@").
+        if left_offset == nil then
+            left_offset, right_offset =
+                string.match(diff_directive, "@@%s*%-(%d+)%D.-%+(%d+)")
+        end
+        -- Never let the loop below do nil arithmetic.
+        left_offset = tonumber(left_offset) or 0
+        right_offset = tonumber(right_offset) or 0
+
+        local right_side_lines = {}
+        local left_side_lines = {}
+        local right_side_line = right_offset
+        local left_side_line = left_offset
+        for i = 2, #diffhunk_lines do
+            local line = diffhunk_lines[i]
+            if vim.startswith(line, "+") then
+                right_side_lines[i] = right_side_line
+                right_side_line = right_side_line + 1
+            elseif vim.startswith(line, "-") then
+                left_side_lines[i] = left_side_line
+                left_side_line = left_side_line + 1
+            else
+                right_side_lines[i] = right_side_line
+                left_side_lines[i] = left_side_line
+                right_side_line = right_side_line + 1
+                left_side_line = left_side_line + 1
+            end
+        end
+
+        return {
+            left_side_lines = left_side_lines,
+            right_side_lines = right_side_lines,
+            right_offset = right_offset,
+            left_offset = left_offset,
+        }
+    end
+end
+
+-- Apply now if octo is already loaded, and also whenever it loads via lazy.
+patch_octo_position_map()
+vim.api.nvim_create_autocmd("User", {
+    pattern = { "LazyLoad" },
+    callback = function(ev)
+        if ev.data == "octo.nvim" then
+            patch_octo_position_map()
+        end
+    end,
+})
+
 -- <leader>o namespace for Octo/PR review
 local map = vim.keymap.set
 
