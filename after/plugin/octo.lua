@@ -154,12 +154,20 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 --   :PRDelta 123      -> PR #123 in a float
 --   :PRDelta!         -> full PR in a bottom split instead of a float
 local function octo_context()
-    local num, file
+    local num, file, repo
     local ok_u, octo_buffer = pcall(function()
         return require("octo.utils").get_current_buffer()
     end)
-    if ok_u and octo_buffer and octo_buffer.number then
-        num = tostring(octo_buffer.number)
+    if ok_u and octo_buffer then
+        if octo_buffer.number then
+            num = tostring(octo_buffer.number)
+        end
+        -- The repo the PR actually belongs to (e.g. "owner/name"). Without this
+        -- gh guesses from the cwd/branch, which gives the wrong or no diff when
+        -- you're not checked out on that repo/branch.
+        if octo_buffer.repo then
+            repo = octo_buffer.repo
+        end
     end
     -- If we're in an active review, grab the file currently focused so we can
     -- scroll delta to it.
@@ -175,7 +183,7 @@ local function octo_context()
             end
         end
     end
-    return num, file
+    return num, file, repo
 end
 
 local function open_delta_float()
@@ -211,12 +219,23 @@ end
 
 local function pr_delta(opts)
     local num = opts.args and opts.args ~= "" and opts.args or nil
-    local file
-    if not num then
-        num, file = octo_context()
-    end
+    local file, repo
+    -- Always try to read Octo context (for repo + focused file), even when a PR
+    -- number was given explicitly.
+    local ctx_num, ctx_file, ctx_repo = octo_context()
+    num = num or ctx_num
+    file = ctx_file
+    repo = ctx_repo
 
-    local gh_cmd = num and ("gh pr diff " .. num) or "gh pr diff"
+    -- Build: gh pr diff [num] [--repo owner/name]
+    local parts = { "gh pr diff" }
+    if num then
+        table.insert(parts, num)
+    end
+    if repo then
+        table.insert(parts, "--repo " .. vim.fn.shellescape(repo))
+    end
+    local gh_cmd = table.concat(parts, " ")
     -- Delta is single-column (unified) by default. paging=never so it fills the
     -- buffer and we scroll with normal nvim keys.
     local cmd = string.format("%s | delta --paging=never --line-numbers", gh_cmd)
