@@ -1,4 +1,4 @@
-vim.keymap.set("n", "<leader>lg", "<cmd>LazyGit<CR>")
+vim.keymap.set("n", "<leader>lg", "<cmd>LazyGit<CR>", { desc = "Open LazyGit" })
 
 
 vim.g.lazygit_floating_window_winblend = 0 -- transpareny of floating window

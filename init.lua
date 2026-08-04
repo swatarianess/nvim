@@ -41,6 +41,8 @@ require("lazy").setup({
   },
   {
       'nvim-treesitter/nvim-treesitter',
+      branch = 'main',
+      lazy = false,
       build = ':TSUpdate',
       dependencies = {
           "OXY2DEV/markview.nvim"
@@ -48,7 +50,6 @@ require("lazy").setup({
   },
   {"preservim/nerdtree"},
   "folke/neodev.nvim",
-  "nvim-treesitter/playground",
   "theprimeagen/harpoon",
   "mbbill/undotree",
   "tpope/vim-fugitive",
@@ -108,6 +109,24 @@ require("lazy").setup({
       dependencies = {
           { "nvim-lua/plenary.nvim", lazy = true },
       },
+  },
+  { "nvim-tree/nvim-web-devicons" },
+  {
+      "pwntester/octo.nvim",
+      cmd = "Octo",
+      dependencies = {
+          "nvim-lua/plenary.nvim",
+          "nvim-telescope/telescope.nvim",
+          "nvim-tree/nvim-web-devicons",
+      },
+      config = function()
+          require("octo").setup({
+              enable_builtin = true,
+              -- Use gh over the API; better for very large PRs
+              picker = "telescope",
+          })
+          vim.treesitter.language.register("markdown", "octo")
+      end,
   },
 })
 

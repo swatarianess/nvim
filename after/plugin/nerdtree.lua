@@ -20,10 +20,10 @@ autocmd bufenter * if (winnr('$') == 1 && bufname() == 'NERD_tree_1') | q | endi
 ]]
 
 -- Key mappings for NERDTree
-vim.keymap.set("n", "<leader>pv", "<cmd>NERDTreeToggle %<CR>")
+vim.keymap.set("n", "<leader>pv", "<cmd>NERDTreeToggle %<CR>", { desc = "Toggle NERDTree" })
 
 -- Key mappings to switch between splits (windows)
-vim.keymap.set("n", "<C-Left>", "<C-w>h")
-vim.keymap.set("n", "<C-Down>", "<C-w>j")
-vim.keymap.set("n", "<C-Up>", "<C-w>k")
-vim.keymap.set("n", "<C-Right>", "<C-w>l")
+vim.keymap.set("n", "<C-Left>", "<C-w>h", { desc = "Window left" })
+vim.keymap.set("n", "<C-Down>", "<C-w>j", { desc = "Window down" })
+vim.keymap.set("n", "<C-Up>", "<C-w>k", { desc = "Window up" })
+vim.keymap.set("n", "<C-Right>", "<C-w>l", { desc = "Window right" })
