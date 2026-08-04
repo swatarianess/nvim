@@ -62,3 +62,51 @@ vim.api.nvim_create_autocmd("ColorScheme", {
     group = vim.api.nvim_create_augroup("OctoTransparentDiffs", { clear = true }),
     callback = transparent_diffs,
 })
+
+-- ---------------------------------------------------------------------------
+-- :PRDelta  -  view a PR's diff piped through `delta` (single unified pane).
+--
+-- Octo's own review UI is buffer-based and can't embed delta, so this opens a
+-- terminal split running `gh pr diff <n> | delta`. Delta gives a gorgeous,
+-- single-column unified diff with syntax highlighting and line numbers.
+-- Great as a *reading* companion: keep this open on one side and use the Octo
+-- review window on the other to leave comments / mark files viewed.
+--
+-- Usage:
+--   :PRDelta          -> diff for the PR of the current branch (or Octo buffer)
+--   :PRDelta 123      -> diff for PR #123
+local function pr_delta(opts)
+    local num = opts.args and opts.args ~= "" and opts.args or nil
+
+    -- If no number given, try to read it from the current Octo buffer.
+    if not num then
+        local ok, octo_buffer = pcall(function()
+            return require("octo.utils").get_current_buffer()
+        end)
+        if ok and octo_buffer and octo_buffer.number then
+            num = tostring(octo_buffer.number)
+        end
+    end
+
+    -- `gh pr diff` accepts a number or, with none, uses the current branch's PR.
+    local gh_cmd = num and ("gh pr diff " .. num) or "gh pr diff"
+    -- Delta is single-column (unified) by default, which is exactly what we
+    -- want. paging=never so it fills the terminal buffer and we scroll with
+    -- normal nvim keys instead of an internal pager.
+    local cmd = string.format(
+        "%s | delta --paging=never --line-numbers",
+        gh_cmd
+    )
+
+    vim.cmd("botright vsplit")
+    vim.cmd("enew")
+    vim.fn.termopen({ "bash", "-lc", cmd })
+    vim.cmd("startinsert")
+end
+
+vim.api.nvim_create_user_command("PRDelta", pr_delta, {
+    nargs = "?",
+    desc = "View PR diff via delta (single unified pane)",
+})
+
+map("n", "<leader>opd", "<cmd>PRDelta<cr>", { desc = "Octo: PR diff via delta" })
