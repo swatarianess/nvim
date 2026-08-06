@@ -112,6 +112,25 @@ require("lazy").setup({
   },
   { "nvim-tree/nvim-web-devicons" },
   {
+      -- Pretty markdown rendering (heading icons, concealed #/*, tables,
+      -- bullets, callouts). We scope it to the `octo` filetype ONLY so it does
+      -- not fight markview.nvim, which already renders real `.md` files.
+      -- Relies on octo registering the markdown TS parser for octo buffers
+      -- (see octo config below); render-markdown decorates that TS tree.
+      "MeanderingProgrammer/render-markdown.nvim",
+      ft = { "octo" },
+      dependencies = {
+          "nvim-treesitter/nvim-treesitter",
+          "nvim-tree/nvim-web-devicons",
+      },
+      opts = {
+          file_types = { "octo" },
+          -- Octo buffers are edited in place; render in normal mode but drop to
+          -- raw text while inserting so editing titles/comments stays sane.
+          render_modes = { "n", "c" },
+      },
+  },
+  {
       "pwntester/octo.nvim",
       cmd = "Octo",
       dependencies = {
