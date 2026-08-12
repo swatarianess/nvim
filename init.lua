@@ -1,9 +1,6 @@
 --- Import swatari configuration
 require("swatari")
 
---- Set Python3 provider path
-vim.g.python3_host_prog = '/usr/bin/python3'
-
 --- Lazy.nvim setup
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.loop.fs_stat(lazypath) then
@@ -20,8 +17,12 @@ vim.opt.rtp:prepend(lazypath)
 
 --- Leader key is set in lua/swatari/remap.lua (before the keymaps that use it)
 
---- Remove annoying node warning
+--- Disable unused language providers (silences :checkhealth warnings/errors).
+--- We don't author remote plugins in these languages; !python3 % still works.
 vim.g.loaded_node_provider = 0
+vim.g.loaded_python3_provider = 0
+vim.g.loaded_perl_provider = 0
+vim.g.loaded_ruby_provider = 0
 
 --- Plugin setup with lazy.nvim
 require("lazy").setup({
