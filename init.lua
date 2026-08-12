@@ -18,8 +18,7 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
---- Set leader key
-vim.g.mapleader = " "
+--- Leader key is set in lua/swatari/remap.lua (before the keymaps that use it)
 
 --- Remove annoying node warning
 vim.g.loaded_node_provider = 0

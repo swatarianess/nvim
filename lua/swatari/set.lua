@@ -40,16 +40,13 @@ vim.api.nvim_set_hl(0, 'NormalFloat', { bg = 'NONE' })
 
 -- Ensure consistent transparency
 vim.opt.pumblend = 0  -- Keep popup menu solid
-vim.opt.winblend = 0  -- Keep active window solid
+vim.opt.winblend = 0  -- Keep windows solid
 
 -- Neovide Opacity settings
 vim.g.neovide_opacity = 0.80
 vim.g.neovide_normal_opacity = 0.95
 
--- Set winblend for inactive windows
-vim.opt.winblend = 80
-
 vim.opt.updatetime = 50
 --vim.opt.colorcolumn = "80"
 
-vim.g.mapleader = " "
+-- Leader key is set in lua/swatari/remap.lua
