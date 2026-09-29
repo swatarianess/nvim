@@ -20,6 +20,17 @@ vim.keymap.set("n", "<leader><leader>", function()
     print("ShoutOut!")
 end, { desc = "Source current file" })
 
+-- Quickfix list (]q / [q for next / previous are Neovim defaults)
+vim.keymap.set("n", "<leader>q", function()
+    for _, win in ipairs(vim.fn.getwininfo()) do
+        if win.quickfix == 1 and win.loclist == 0 then
+            vim.cmd("cclose")
+            return
+        end
+    end
+    vim.cmd("copen")
+end, { desc = "Toggle quickfix list" })
+
 -- Key mappings to switch between tab pages
 vim.keymap.set("n", "<leader>h", "<cmd>tabprevious<CR>", { desc = "Previous tab" })
 vim.keymap.set("n", "<leader>l", "<cmd>tabnext<CR>", { desc = "Next tab" })
